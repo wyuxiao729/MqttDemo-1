@@ -1,8 +1,13 @@
 package win.hellohang;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** 
  * 发布消息的回调类 
@@ -36,6 +41,68 @@ public class PushCallback implements MqttCallback {
         // subscribe后得到的消息会执行到这里面  
         System.out.println("接收消息主题 : " + topic);  
         System.out.println("接收消息Qos : " + message.getQos());  
-        System.out.println("接收消息内容 : " + new String(message.getPayload()));  
-    }  
+        System.out.println("接收消息内容 : " + new String(message.getPayload()));
+//        byte[] context = message.getPayload();
+//        try {
+//            Message model = parseContext(context);
+//            System.out.printf(model.toString());
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+    }
+
+
+    public static byte[] subBytes(byte[] src, int begin, int count) {
+        byte[] bs = new byte[count];
+        for (int i=begin;i<begin+count; i++) bs[i-begin] = src[i];
+        return bs;
+    }
+
+    private Message parseContext(byte [] context){
+        ByteBuf in = Unpooled.copiedBuffer(context);
+        in.readByte();//保留字段 固定为 0x00;
+        int did = ByteUtils.lBytesToInt(in.readBytes(2).array());
+        int status = ByteUtils.byteToInt(in.readByte());//设备状态
+        int baterry = ByteUtils.byteToInt(in.readByte());//电量
+        int sequence = ByteUtils.byteToInt(in.readByte());//传感器计数包
+        int year = ByteUtils.byteToInt(in.readByte());//年
+        int month = ByteUtils.byteToInt(in.readByte());//月
+        int dat = ByteUtils.byteToInt(in.readByte());//日
+        int hour = ByteUtils.byteToInt(in.readByte());//时
+        int minute = ByteUtils.byteToInt(in.readByte());//分
+        int second = ByteUtils.byteToInt(in.readByte());//秒
+        int channelSum = ByteUtils.byteToInt(in.readByte()); //通道数(传感器数量)
+
+        List<MessageBody> dataList = new ArrayList<MessageBody>(); //传感器数据
+        for (int i = 0; i < channelSum; i++) {
+            int channel = ByteUtils.byteToInt(in.readByte()); //通道编号
+            int type = ByteUtils.byteToInt(in.readByte()); //类型字段
+            byte [] value = new byte[4]; //低位四字节 传感器上报值   ?? 什么 类型的？ int, float, string ????
+            in.readBytes(value);
+            MessageBody requestData = MessageBody.builder()
+                    .channel(channel)
+                    .type(type)
+                    .value(value)
+                    .build();
+            dataList.add(requestData);
+        }
+        int checkSum = ByteUtils.lBytesToInt(in.readBytes(2).array()); //校验位
+        Message message = Message.builder()
+                .did(did)
+                .status(status)
+                .baterry(baterry)
+                .sequence(sequence)
+                .year(year)
+                .month(month)
+                .dat(dat)
+                .hour(hour)
+                .minute(minute)
+                .second(second)
+                .channelSum(channelSum)
+                .dataList(dataList)
+                .checkSum(checkSum)
+                .build();
+        return message;
+    }
+
 }  

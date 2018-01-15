@@ -8,7 +8,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 public class ClientMQTT {  
 	  
-    public static final String HOST = "tcp://192.168.44.128:1883";  
+    public static final String HOST = "tcp://118.178.195.40:1883";
     public static final String TOPIC = "hello";  
     private static final String clientid = "client11";  
     private MqttClient client;  
@@ -46,5 +46,5 @@ public class ClientMQTT {
     public static void main(String[] args) throws MqttException {  
         ClientMQTT client = new ClientMQTT();  
         client.start();  
-    }  
+    }
 }  
